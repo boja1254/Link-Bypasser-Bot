@@ -16,10 +16,7 @@ from requests import get
 
 UPTOBOX_TOKEN = environ.get("UPTOBOX_TOKEN","4a4ecf35552fea876da1d63e7fd000d2cb2fo")
 ndus = environ.get("TERA_COOKIE","YQOR7exteHuiC7XNl_TAD_ZaXGexSokJJwoblC4S")
-if ndus is None: TERA_COOKIE = None
-else: TERA_COOKIE = {"ndus": ndus}
-
-
+TERA_COOKIE = None if ndus is None else {"ndus": ndus}
 ddllist = ['yadi.sk','disk.yandex.com','mediafire.com','uptobox.com','osdn.net','github.com',
 'hxfile.co','1drv.ms','pixeldrain.com','antfiles.com','streamtape','racaty','1fichier.com',
 'solidfiles.com','krakenfiles.com','mdisk.me','upload.ee','akmfiles','linkbox','shrdsk','letsupload.io',
@@ -164,8 +161,8 @@ def uptobox(url: str) -> str:
         link = findall(r'\bhttps?://.*uptobox\.com\S+', url)[0]
     except IndexError:
         return ("No Uptobox links found")
-    link = findall(r'\bhttps?://.*\.uptobox\.com/dl\S+', url)
-    if link: return link[0]
+    if link := findall(r'\bhttps?://.*\.uptobox\.com/dl\S+', url):
+        return link[0]
     cget = create_scraper().request
     try:
         file_id = findall(r'\bhttps?://.*uptobox\.com/(\w+)', url)[0]
@@ -195,17 +192,22 @@ def uptobox(url: str) -> str:
 
 
 def mediafire(url: str) -> str:
-    final_link = findall(r'https?:\/\/download\d+\.mediafire\.com\/\S+\/\S+\/\S+', url)
-    if final_link: return final_link[0]
+    if final_link := findall(
+        r'https?:\/\/download\d+\.mediafire\.com\/\S+\/\S+\/\S+', url
+    ):
+        return final_link[0]
     cget = create_scraper().request
     try:
         url = cget('get', url).url
         page = cget('get', url).text
     except Exception as e:
         return (f"ERROR: {e.__class__.__name__}")
-    final_link = findall(r"\'(https?:\/\/download\d+\.mediafire\.com\/\S+\/\S+\/\S+)\'", page)
-    if not final_link:return ("ERROR: No links found in this page")
-    return final_link[0]
+    if final_link := findall(
+        r"\'(https?:\/\/download\d+\.mediafire\.com\/\S+\/\S+\/\S+)\'", page
+    ):
+        return final_link[0]
+    else:
+        return ("ERROR: No links found in this page")
 
 
 def osdn(url: str) -> str:
@@ -261,8 +263,8 @@ def letsupload(url: str) -> str:
         res = cget("POST", url)
     except Exception as e:
         return (f'ERROR: {e.__class__.__name__}')
-    direct_link = findall(r"(https?://letsupload\.io\/.+?)\'", res.text)
-    if direct_link: return direct_link[0]
+    if direct_link := findall(r"(https?://letsupload\.io\/.+?)\'", res.text):
+        if direct_link: return direct_link[0]
     else:
         return ('ERROR: Direct Link not found')
 
@@ -273,8 +275,8 @@ def anonfilesBased(url: str) -> str:
         soup = BeautifulSoup(cget('get', url).content, 'lxml')
     except Exception as e:
         return (f"ERROR: {e.__class__.__name__}")
-    sa = soup.find(id="download-url")
-    if sa: return sa['href']
+    if sa := soup.find(id="download-url"):
+        return sa['href']
     return ("ERROR: File not found!")
 
 
@@ -358,7 +360,7 @@ def streamtape(url: str) -> str:
     response = get(url)
 
     if (videolink := findall(r"document.*((?=id\=)[^\"']+)", response.text)):
-        nexturl = "https://streamtape.com/get_video?" + videolink[-1]
+        nexturl = f"https://streamtape.com/get_video?{videolink[-1]}"
         try: return nexturl
         except Exception as e: return (f"ERROR: {e.__class__.__name__}")
 
@@ -377,8 +379,9 @@ def racaty(url: str) -> str:
     except Exception as e:
         return (f'ERROR: {e.__class__.__name__}')
     html_tree = etree.HTML(res.text)
-    direct_link = html_tree.xpath("//a[contains(@id,'uniqueExpirylink')]/@href")
-    if direct_link:
+    if direct_link := html_tree.xpath(
+        "//a[contains(@id,'uniqueExpirylink')]/@href"
+    ):
         return direct_link[0]
     else:
         return ('ERROR: Direct link not found')
@@ -413,16 +416,20 @@ def fichier(link: str) -> str:
             "ERROR: File not found/The link you entered is wrong!")
     soup = BeautifulSoup(req.content, 'lxml')
     if soup.find("a", {"class": "ok btn-general btn-orange"}):
-        dl_url = soup.find("a", {"class": "ok btn-general btn-orange"})["href"]
-        if dl_url: return dl_url
+        if dl_url := soup.find("a", {"class": "ok btn-general btn-orange"})[
+            "href"
+        ]:
+            return dl_url
         return (
             "ERROR: Unable to generate Direct Link 1fichier!")
     elif len(soup.find_all("div", {"class": "ct_warn"})) == 3:
         str_2 = soup.find_all("div", {"class": "ct_warn"})[-1]
         if "you must wait" in str(str_2).lower():
-            numbers = [int(word) for word in str(str_2).split() if word.isdigit()]
-            if numbers:  return (
-                    f"ERROR: 1fichier is on a limit. Please wait {numbers[0]} minute.")
+            if numbers := [
+                int(word) for word in str(str_2).split() if word.isdigit()
+            ]:
+                if numbers:  return (
+                        f"ERROR: 1fichier is on a limit. Please wait {numbers[0]} minute.")
             else:
                 return (
                     "ERROR: 1fichier is on a limit. Please wait a few minutes/hour.")
@@ -436,9 +443,11 @@ def fichier(link: str) -> str:
         str_1 = soup.find_all("div", {"class": "ct_warn"})[-2]
         str_3 = soup.find_all("div", {"class": "ct_warn"})[-1]
         if "you must wait" in str(str_1).lower():
-            numbers = [int(word) for word in str(str_1).split() if word.isdigit()]
-            if numbers: return (
-                    f"ERROR: 1fichier is on a limit. Please wait {numbers[0]} minute.")
+            if numbers := [
+                int(word) for word in str(str_1).split() if word.isdigit()
+            ]:
+                if numbers: return (
+                        f"ERROR: 1fichier is on a limit. Please wait {numbers[0]} minute.")
             else:
                 return (
                     "ERROR: 1fichier is on a limit. Please wait a few minutes/hour.")
@@ -527,7 +536,8 @@ def terabox(url) -> str:
     try:
         res = session.request('GET', url)
         key = res.url.split('?surl=')[-1]
-        if TERA_COOKIE is None: return f"Terabox Cookie is not Set"
+        if TERA_COOKIE is None:
+            return "Terabox Cookie is not Set"
         session.cookies.update(TERA_COOKIE)
         res = session.request(
             'GET', f'https://www.terabox.com/share/list?app_id=250528&shorturl={key}&root=1')
@@ -684,8 +694,9 @@ def akmfiles(url):
     except Exception as e:
         return (f'ERROR: {e.__class__.__name__}')
     html_tree = etree.HTML(res.content)
-    direct_link = html_tree.xpath("//a[contains(@class,'btn btn-dow')]/@href")
-    if direct_link:
+    if direct_link := html_tree.xpath(
+        "//a[contains(@class,'btn btn-dow')]/@href"
+    ):
         return direct_link[0]
     else:
         return ('ERROR: Direct link not found')
